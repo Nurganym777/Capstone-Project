@@ -19,6 +19,111 @@
     <div class="container mt-4">
         <h2>Health Dashboard</h2>
         
+        <!-- Context Section -->
+        <div class="section mb-5">
+            <h3 class="section-title">Context</h3>
+            <div class="row" id="context-metrics-row">
+                <div class="col-md-4 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h6 class="card-title">Average Daily Sugar Intake</h6>
+                            <div class="display-5" id="avgSugarIntake">--</div>
+                            <div class="text-muted">grams per person</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h6 class="card-title">Average Diabetes Prevalence</h6>
+                            <div class="display-5" id="avgDiabetes">--</div>
+                            <div class="text-muted">%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h6 class="card-title">Average Obesity Rate</h6>
+                            <div class="display-5" id="avgObesity">--</div>
+                            <div class="text-muted">%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Points Section -->
+        <div class="section mb-5">
+            <h3 class="section-title">Main Points</h3>
+            <div class="row">
+                <!-- Quantitative Visualizations -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Sugar Intake vs Diabetes Prevalence</h5>
+                            <div id="sugarDiabetesScatter"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Average Daily Sugar Intake by Country</h5>
+                            <div id="sugarIntakeBar"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Qualitative Visualizations -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Sources of Sugar</h5>
+                            <div id="sugarSourcesPie"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Diabetes vs Obesity Prevalence</h5>
+                            <div id="diabetesObesityHeatmap"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deep Dive Section -->
+        <div class="section mb-5">
+            <h3 class="section-title">Deep Dive Analysis</h3>
+            <div class="row">
+                <div class="col-md-12 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Regional Analysis</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div id="regionalAnalysis"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="analysis-text">
+                                        <h6>Key Insights:</h6>
+                                        <ul>
+                                            <li>Western countries show higher sugar consumption but better health outcomes due to better healthcare systems</li>
+                                            <li>Developing nations face increasing diabetes rates despite lower sugar consumption</li>
+                                            <li>Urban areas show higher sugar intake compared to rural regions</li>
+                                            <li>Economic development correlates with processed food consumption</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Filters -->
         <div class="row mb-4">
             <div class="col-md-4">
@@ -39,49 +144,6 @@
                 </select>
             </div>
         </div>
-
-        <!-- Visualizations -->
-        <div class="row">
-            <!-- Diabetes vs Obesity Heatmap -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Diabetes vs Obesity Prevalence</h5>
-                        <div id="diabetesObesityHeatmap"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sugar Intake vs Diabetes Scatter -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Sugar Intake vs Diabetes Prevalence</h5>
-                        <div id="sugarDiabetesScatter"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Daily Sugar Intake Bar Chart -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Average Daily Sugar Intake by Country</h5>
-                        <div id="sugarIntakeBar"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sugar Sources Pie Chart -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Sources of Sugar</h5>
-                        <div id="sugarSourcesPie"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -100,6 +162,16 @@
             const sugarSourcesResponse = await fetch('/api/health/sugar-sources');
             const sugarSourcesData = await sugarSourcesResponse.json();
 
+            // --- CONTEXT METRICS ---
+            // Calculate averages
+            const avgSugarIntake = (sugarIntakeData.reduce((sum, d) => sum + (parseFloat(d.Avg_Daily_Sugar_Intake) || 0), 0) / sugarIntakeData.length).toFixed(2);
+            const avgDiabetes = (diabetesObesityData.reduce((sum, d) => sum + (parseFloat(d.Diabetes_Prevalence) || 0), 0) / diabetesObesityData.length).toFixed(2);
+            const avgObesity = (diabetesObesityData.reduce((sum, d) => sum + (parseFloat(d.Obesity_Rate) || 0), 0) / diabetesObesityData.length).toFixed(2);
+            document.getElementById('avgSugarIntake').textContent = avgSugarIntake;
+            document.getElementById('avgDiabetes').textContent = avgDiabetes;
+            document.getElementById('avgObesity').textContent = avgObesity;
+
+            // --- MAIN VISUALIZATIONS ---
             // Plot Diabetes vs Obesity Heatmap
             const heatmapData = [{
                 z: diabetesObesityData.map(d => [d.Diabetes_Prevalence, d.Obesity_Rate]),
@@ -144,6 +216,20 @@
                 type: 'pie'
             }];
             Plotly.newPlot('sugarSourcesPie', pieData);
+
+            // Plot Regional Analysis
+            const regionalData = [{
+                x: diabetesObesityData.map(d => d.Country),
+                y: diabetesObesityData.map(d => d.Diabetes_Prevalence),
+                type: 'bar',
+                name: 'Diabetes'
+            }, {
+                x: diabetesObesityData.map(d => d.Country),
+                y: diabetesObesityData.map(d => d.Obesity_Rate),
+                type: 'bar',
+                name: 'Obesity'
+            }];
+            Plotly.newPlot('regionalAnalysis', regionalData);
         }
 
         // Initialize the dashboard

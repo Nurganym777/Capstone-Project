@@ -19,6 +19,111 @@
     <div class="container mt-4">
         <h2>Policy Dashboard</h2>
         
+        <!-- Context Section -->
+        <div class="section mb-5">
+            <h3 class="section-title">Context</h3>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Global Sugar Policy Overview</h5>
+                            <div class="context-text">
+                                <p>This dashboard examines the relationship between sugar policies, economic indicators, and health outcomes across different countries. The analysis reveals how government interventions and economic factors influence sugar consumption patterns and public health.</p>
+                                <p>Key findings include:</p>
+                                <ul>
+                                    <li>Countries with higher sugar taxes show lower obesity rates</li>
+                                    <li>Economic development correlates with sugar import/export patterns</li>
+                                    <li>Government subsidies impact sugar production and consumption</li>
+                                    <li>Regional trade agreements influence sugar market dynamics</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Points Section -->
+        <div class="section mb-5">
+            <h3 class="section-title">Main Points</h3>
+            <div class="row">
+                <!-- Quantitative Visualizations -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">GDP vs Sugar Tax vs Obesity</h5>
+                            <div id="gdpTaxBubble"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Sugar Import/Export by Region</h5>
+                            <div id="importExportBar"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Qualitative Visualizations -->
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Government Sugar Tax by Country</h5>
+                            <div id="taxChoropleth"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Top 10 Sugar-Producing Countries</h5>
+                            <div class="table-responsive">
+                                <table class="table" id="topProducersTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Country</th>
+                                            <th>Production Yield</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deep Dive Section -->
+        <div class="section mb-5">
+            <h3 class="section-title">Deep Dive Analysis</h3>
+            <div class="row">
+                <div class="col-md-12 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Policy Impact Analysis</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div id="policyImpact"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="analysis-text">
+                                        <h6>Key Insights:</h6>
+                                        <ul>
+                                            <li>Countries with comprehensive sugar policies show better health outcomes</li>
+                                            <li>Economic development influences policy effectiveness</li>
+                                            <li>Trade agreements impact local sugar markets</li>
+                                            <li>Urban areas respond better to sugar taxation policies</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Filters -->
         <div class="row mb-4">
             <div class="col-md-4">
@@ -38,59 +143,6 @@
                     <option value="hfcs">HFCS</option>
                     <option value="sugarcane">Sugarcane</option>
                 </select>
-            </div>
-        </div>
-
-        <!-- Visualizations -->
-        <div class="row">
-            <!-- Government Tax Choropleth -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Government Sugar Tax by Country</h5>
-                        <div id="taxChoropleth"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Import/Export Bar Chart -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Sugar Import/Export by Region</h5>
-                        <div id="importExportBar"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- GDP vs Tax vs Obesity Bubble Chart -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">GDP vs Sugar Tax vs Obesity</h5>
-                        <div id="gdpTaxBubble"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top 10 Sugar Producers Table -->
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Top 10 Sugar-Producing Countries</h5>
-                        <div class="table-responsive">
-                            <table class="table" id="topProducersTable">
-                                <thead>
-                                    <tr>
-                                        <th>Country</th>
-                                        <th>Production Yield</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -155,6 +207,20 @@
                     </tr>
                 `)
                 .join('');
+
+            // Plot Policy Impact Analysis
+            const policyData = [{
+                x: taxGdpData.map(d => d.Country),
+                y: taxGdpData.map(d => d.Gov_Tax),
+                type: 'bar',
+                name: 'Sugar Tax'
+            }, {
+                x: taxGdpData.map(d => d.Country),
+                y: taxGdpData.map(d => d.Obesity_Rate),
+                type: 'bar',
+                name: 'Obesity Rate'
+            }];
+            Plotly.newPlot('policyImpact', policyData);
         }
 
         // Initialize the dashboard

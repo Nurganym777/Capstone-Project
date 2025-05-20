@@ -7,11 +7,29 @@ body {
     margin-bottom: 2rem;
 }
 
+/* Section Styles */
+.section {
+    margin-bottom: 3rem;
+}
+
+.section-title {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
 /* Card Styles */
 .card {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     border: none;
     margin-bottom: 1.5rem;
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
 }
 
 .card-title {
@@ -20,12 +38,28 @@ body {
     margin-bottom: 1rem;
 }
 
+/* Context and Analysis Text Styles */
+.context-text, .analysis-text {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #495057;
+}
+
+.context-text ul, .analysis-text ul {
+    padding-left: 1.5rem;
+}
+
+.context-text li, .analysis-text li {
+    margin-bottom: 0.5rem;
+}
+
 /* Filter Styles */
 .form-select {
     border-radius: 4px;
     border: 1px solid #ced4da;
     padding: 0.5rem;
     margin-bottom: 1rem;
+    background-color: white;
 }
 
 /* Chart Container Styles */
@@ -34,9 +68,13 @@ body {
 [id$="Bar"],
 [id$="Pie"],
 [id$="Choropleth"],
-[id$="Bubble"] {
+[id$="Bubble"],
+[id$="Analysis"] {
     height: 400px;
     width: 100%;
+    background-color: white;
+    border-radius: 4px;
+    padding: 1rem;
 }
 
 /* Table Styles */
@@ -65,7 +103,12 @@ body {
     [id$="Bar"],
     [id$="Pie"],
     [id$="Choropleth"],
-    [id$="Bubble"] {
+    [id$="Bubble"],
+    [id$="Analysis"] {
         height: 300px;
+    }
+
+    .context-text, .analysis-text {
+        font-size: 1rem;
     }
 } 
