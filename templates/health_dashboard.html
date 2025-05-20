@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Dashboard - Sugar Consumption Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Sugar Consumption Analysis</a>
+            <a href="/" class="btn btn-outline-light">Back to Home</a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2>Health Dashboard</h2>
+        
+        <!-- Filters -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <select class="form-select" id="regionFilter">
+                    <option value="">All Regions</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" id="continentFilter">
+                    <option value="">All Continents</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" id="diseaseFilter">
+                    <option value="both">Both Diabetes and Obesity</option>
+                    <option value="diabetes">Diabetes Only</option>
+                    <option value="obesity">Obesity Only</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Visualizations -->
+        <div class="row">
+            <!-- Diabetes vs Obesity Heatmap -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Diabetes vs Obesity Prevalence</h5>
+                        <div id="diabetesObesityHeatmap"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sugar Intake vs Diabetes Scatter -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Sugar Intake vs Diabetes Prevalence</h5>
+                        <div id="sugarDiabetesScatter"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Sugar Intake Bar Chart -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Average Daily Sugar Intake by Country</h5>
+                        <div id="sugarIntakeBar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sugar Sources Pie Chart -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Sources of Sugar</h5>
+                        <div id="sugarSourcesPie"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Fetch and plot data
+        async function fetchAndPlotData() {
+            // Diabetes and Obesity data
+            const diabetesObesityResponse = await fetch('/api/health/diabetes-obesity');
+            const diabetesObesityData = await diabetesObesityResponse.json();
+            
+            // Sugar Intake data
+            const sugarIntakeResponse = await fetch('/api/health/sugar-intake');
+            const sugarIntakeData = await sugarIntakeResponse.json();
+            
+            // Sugar Sources data
+            const sugarSourcesResponse = await fetch('/api/health/sugar-sources');
+            const sugarSourcesData = await sugarSourcesResponse.json();
+
+            // Plot Diabetes vs Obesity Heatmap
+            const heatmapData = [{
+                z: diabetesObesityData.map(d => [d.Diabetes_Prevalence, d.Obesity_Rate]),
+                x: ['Diabetes', 'Obesity'],
+                y: diabetesObesityData.map(d => d.Country),
+                type: 'heatmap',
+                colorscale: 'Viridis'
+            }];
+            Plotly.newPlot('diabetesObesityHeatmap', heatmapData);
+
+            // Plot Sugar Intake vs Diabetes Scatter
+            const scatterData = [{
+                x: sugarIntakeData.map(d => d.Avg_Daily_Sugar_Intake),
+                y: sugarIntakeData.map(d => d.Diabetes_Prevalence),
+                mode: 'markers',
+                type: 'scatter',
+                text: sugarIntakeData.map(d => d.Country),
+                marker: {
+                    size: 10,
+                    color: sugarIntakeData.map(d => d.Diabetes_Prevalence),
+                    colorscale: 'Viridis'
+                }
+            }];
+            Plotly.newPlot('sugarDiabetesScatter', scatterData);
+
+            // Plot Sugar Intake Bar Chart
+            const barData = [{
+                x: sugarIntakeData.map(d => d.Country),
+                y: sugarIntakeData.map(d => d.Avg_Daily_Sugar_Intake),
+                type: 'bar'
+            }];
+            Plotly.newPlot('sugarIntakeBar', barData);
+
+            // Plot Sugar Sources Pie Chart
+            const pieData = [{
+                values: [
+                    sugarSourcesData.reduce((sum, d) => sum + d.Sugar_From_Sugarcane, 0),
+                    sugarSourcesData.reduce((sum, d) => sum + d.Sugar_From_Beet, 0),
+                    sugarSourcesData.reduce((sum, d) => sum + d.Sugar_From_HFCS, 0)
+                ],
+                labels: ['Sugarcane', 'Beet', 'HFCS'],
+                type: 'pie'
+            }];
+            Plotly.newPlot('sugarSourcesPie', pieData);
+        }
+
+        // Initialize the dashboard
+        fetchAndPlotData();
+
+        // Add event listeners for filters
+        document.getElementById('regionFilter').addEventListener('change', fetchAndPlotData);
+        document.getElementById('continentFilter').addEventListener('change', fetchAndPlotData);
+        document.getElementById('diseaseFilter').addEventListener('change', fetchAndPlotData);
+    </script>
+</body>
+</html> 
