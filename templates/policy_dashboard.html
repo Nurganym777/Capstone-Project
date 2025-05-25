@@ -3,233 +3,298 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Policy Dashboard - Sugar Consumption Analysis</title>
+    <title>Sugar Trade & Regulation Impact</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7faf9; }
+        .dashboard-header { background: #fff; border-radius: 10px; padding: 2rem 2rem 1rem 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .dashboard-title { color: #1b4332; font-weight: 700; font-size: 2.2rem; }
+        .dashboard-subtitle { color: #495057; font-size: 1.1rem; }
+        .context-card { background: #e9f5ee; border: none; border-radius: 10px; color: #1b4332; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
+        .context-card .display-5 { color: #2d6a4f; font-weight: 700; }
+        .visual-panel-title { font-weight: 600; color: #1b4332; }
+        .visual-panel-desc { color: #495057; font-size: 0.98rem; margin-bottom: 0.5rem; }
+        .filter-panel { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); padding: 1.5rem; }
+        .footer { color: #6c757d; font-size: 0.95rem; text-align: right; margin-top: 2rem; }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/">Sugar Consumption Analysis</a>
-            <a href="/" class="btn btn-outline-light">Back to Home</a>
+    <div class="container-fluid p-4">
+        <!-- Logo and Header -->
+        <div class="d-flex align-items-center mb-2">
+            <div class="sdash-logo" style="color:#14532d;">
+                <span class="sdash-cube" style="border:2px solid #14532d;">
+                    <span class="sdash-cross" style="color:#14532d;">✚</span>
+                </span>
+                S.Dash
+            </div>
         </div>
-    </nav>
-
-    <div class="container mt-4">
-        <h2>Policy Dashboard</h2>
-        
+        <div class="dashboard-header mb-4">
+            <div class="dashboard-title">Sugar Trade & Regulation Impact</div>
+            <div class="dashboard-subtitle">Insights for policy planning and public health strategy</div>
+        </div>
         <!-- Context Section -->
-        <div class="section mb-5">
-            <h3 class="section-title">Context</h3>
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Global Sugar Policy Overview</h5>
-                            <div class="context-text">
-                                <p>This dashboard examines the relationship between sugar policies, economic indicators, and health outcomes across different countries. The analysis reveals how government interventions and economic factors influence sugar consumption patterns and public health.</p>
-                                <p>Key findings include:</p>
-                                <ul>
-                                    <li>Countries with higher sugar taxes show lower obesity rates</li>
-                                    <li>Economic development correlates with sugar import/export patterns</li>
-                                    <li>Government subsidies impact sugar production and consumption</li>
-                                    <li>Regional trade agreements influence sugar market dynamics</li>
-                                </ul>
-                            </div>
-                        </div>
+        <div class="row mb-4 g-3">
+            <div class="col-md-3 col-6">
+                <div class="card context-card text-center" style="border: 2px solid #1b4332;">
+                    <div class="card-body">
+                        <div class="card-title small">Total Global Sugar Import (tons)</div>
+                        <div class="display-5" id="totalSugarImport">--</div>
+                        <div class="text-muted">tons</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card context-card text-center" style="border: 2px solid #1b4332;">
+                    <div class="card-body">
+                        <div class="card-title small">Total Sugar Export (tons)</div>
+                        <div class="display-5" id="totalSugarExport">--</div>
+                        <div class="text-muted">tons</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card context-card text-center" style="border: 2px solid #1b4332;">
+                    <div class="card-body">
+                        <div class="card-title small">Avg Gov Sugar Tax (per capita)</div>
+                        <div class="display-5" id="avgGovTax">--</div>
+                        <div class="text-muted">per capita</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card context-card text-center" style="border: 2px solid #1b4332;">
+                    <div class="card-body">
+                        <div class="card-title small">Avg GDP Per Capita (USD)</div>
+                        <div class="display-5" id="avgGDP">--</div>
+                        <div class="text-muted">USD</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Main Points Section -->
-        <div class="section mb-5">
-            <h3 class="section-title">Main Points</h3>
-            <div class="row">
-                <!-- Quantitative Visualizations -->
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">GDP vs Sugar Tax vs Obesity</h5>
-                            <div id="gdpTaxBubble"></div>
-                        </div>
-                    </div>
+        <!-- Main Visual Section -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card p-3 mb-3">
+                    <div class="visual-panel-title">Sugar Import vs Export by Region</div>
+                    <div class="visual-panel-desc">Compare trade balance by region.</div>
+                    <div id="importExportBar" style="height:340px;"></div>
                 </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Sugar Import/Export by Region</h5>
-                            <div id="importExportBar"></div>
-                        </div>
-                    </div>
+                <div class="card p-3 mb-3">
+                    <div class="visual-panel-title">Sugar Tax per Country</div>
+                    <div class="visual-panel-desc">Choropleth: Tax burden across world.</div>
+                    <div id="taxChoropleth" style="height:340px;"></div>
                 </div>
-                <!-- Qualitative Visualizations -->
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Government Sugar Tax by Country</h5>
-                            <div id="taxChoropleth"></div>
-                        </div>
-                    </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card p-3 mb-3">
+                    <div class="visual-panel-title">GDP vs Tax vs Obesity</div>
+                    <div class="visual-panel-desc">Bubble: X = GDP, Y = Tax, Size = Obesity.</div>
+                    <div id="gdpTaxBubble" style="height:340px;"></div>
                 </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Top 10 Sugar-Producing Countries</h5>
-                            <div class="table-responsive">
-                                <table class="table" id="topProducersTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Country</th>
-                                            <th>Production Yield</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+                <div class="card p-3 mb-3">
+                    <div class="visual-panel-title">Top 10 Sugar Producers</div>
+                    <div class="visual-panel-desc">Ranked by sugarcane yield.</div>
+                    <div class="table-responsive"><table class="table" id="topProducersTable"><thead><tr><th>Country</th><th>Production Yield</th></tr></thead><tbody></tbody></table></div>
                 </div>
             </div>
         </div>
-
         <!-- Deep Dive Section -->
-        <div class="section mb-5">
-            <h3 class="section-title">Deep Dive Analysis</h3>
-            <div class="row">
-                <div class="col-md-12 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Policy Impact Analysis</h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div id="policyImpact"></div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="analysis-text">
-                                        <h6>Key Insights:</h6>
-                                        <ul>
-                                            <li>Countries with comprehensive sugar policies show better health outcomes</li>
-                                            <li>Economic development influences policy effectiveness</li>
-                                            <li>Trade agreements impact local sugar markets</li>
-                                            <li>Urban areas respond better to sugar taxation policies</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+        <div class="deep-dive-section">
+            <div class="deep-dive-title">Deep Dive: Country Trade & Policy Table</div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Region</label>
+                    <select class="form-select mb-2" id="deepDiveRegionFilter"></select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">GDP Range</label>
+                    <input type="range" class="form-range mb-2" min="0" max="100000" id="deepDiveGdpSlider">
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="deepDiveTaxAboveAvg">
+                        <label class="form-check-label" for="deepDiveTaxAboveAvg">Tax Above Global Avg</label>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Filters -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <select class="form-select" id="countryFilter">
-                    <option value="">All Countries</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <select class="form-select" id="regionFilter">
-                    <option value="">All Regions</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <select class="form-select" id="sugarTypeFilter">
-                    <option value="all">All Sugar Types</option>
-                    <option value="beet">Beet Sugar</option>
-                    <option value="hfcs">HFCS</option>
-                    <option value="sugarcane">Sugarcane</option>
-                </select>
+            <div class="table-responsive">
+                <table class="table table-bordered" id="deepDiveTable">
+                    <thead>
+                        <tr>
+                            <th>Country</th>
+                            <th>Continent</th>
+                            <th>Region</th>
+                            <th>Sugar Import</th>
+                            <th>Sugar Export</th>
+                            <th>Tax per Capita</th>
+                            <th>GDP</th>
+                            <th>Obesity (%)</th>
+                            <th>Diabetes (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="deepDiveNoData" class="text-center text-muted" style="display:none;">No data available for the selected filters.</div>
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Fetch and plot data
-        async function fetchAndPlotData() {
-            // Tax and GDP data
-            const taxGdpResponse = await fetch('/api/policy/tax-gdp');
-            const taxGdpData = await taxGdpResponse.json();
-            
-            // Import/Export data
-            const importExportResponse = await fetch('/api/policy/import-export');
-            const importExportData = await importExportResponse.json();
-            
-            // Production data
-            const productionResponse = await fetch('/api/policy/production');
-            const productionData = await productionResponse.json();
-
-            // Plot GDP vs Tax vs Obesity Bubble Chart
-            const bubbleData = [{
-                x: taxGdpData.map(d => d.GDP_Per_Capita),
-                y: taxGdpData.map(d => d.Gov_Tax),
-                mode: 'markers',
-                type: 'scatter',
-                text: taxGdpData.map(d => d.Country),
-                marker: {
-                    size: taxGdpData.map(d => d.Obesity_Rate * 2),
-                    color: taxGdpData.map(d => d.Obesity_Rate),
-                    colorscale: 'Viridis',
-                    showscale: true
-                }
-            }];
-            Plotly.newPlot('gdpTaxBubble', bubbleData);
-
-            // Plot Import/Export Bar Chart
-            const barData = [{
-                x: importExportData.map(d => d.Country),
-                y: importExportData.map(d => d.Sugar_Imports),
+    function formatDate(date) { return date.toLocaleString(); }
+    let taxGdpData = [], importExportData = [], productionData = [], allData = [];
+    async function fetchAllData() {
+        const [taxGdpRes, importExportRes, productionRes] = await Promise.all([
+            fetch('/api/policy/tax-gdp'),
+            fetch('/api/policy/import-export'),
+            fetch('/api/policy/production')
+        ]);
+        taxGdpData = await taxGdpRes.json();
+        importExportData = await importExportRes.json();
+        productionData = await productionRes.json();
+        allData = taxGdpData.map((d, i) => ({ ...d, ...importExportData[i], ...productionData[i] }));
+    }
+    function populateFilters() {
+        const sugarTypes = ['All', 'Beet', 'HFCS', 'Sugarcane'];
+        const sugarTypeSel = document.getElementById('sugarTypeFilter');
+        sugarTypeSel.innerHTML = sugarTypes.map(t => `<option value="${t.toLowerCase()}">${t}</option>`).join('');
+    }
+    function getFilteredData() {
+        const sugarType = document.getElementById('sugarTypeFilter').value;
+        const countrySearch = document.getElementById('countrySearch').value.toLowerCase();
+        return allData.filter(d =>
+            (!sugarType || sugarType === 'all' || (sugarType === 'beet' && d.Sugar_From_Beet > 0) || (sugarType === 'hfcs' && d.Sugar_From_HFCS > 0) || (sugarType === 'sugarcane' && d.Sugar_From_Sugarcane > 0)) &&
+            (!countrySearch || (d.Country && d.Country.toLowerCase().includes(countrySearch)))
+        );
+    }
+    function updateContext(filtered) {
+        const sum = (arr, key) => arr.reduce((sum, d) => sum + (parseFloat(d[key]) || 0), 0);
+        const avg = (arr, key) => (arr.length ? Math.round(sum(arr, key) / arr.length) : '--');
+        document.getElementById('totalSugarImport').textContent = Math.round(sum(filtered, 'Sugar_Imports')).toLocaleString();
+        document.getElementById('totalSugarExport').textContent = Math.round(sum(filtered, 'Sugar_Exports')).toLocaleString();
+        document.getElementById('avgGovTax').textContent = avg(filtered, 'Gov_Tax');
+        document.getElementById('avgGDP').textContent = avg(filtered, 'GDP_Per_Capita').toLocaleString();
+    }
+    function renderCharts(filtered) {
+        Plotly.newPlot('gdpTaxBubble', [{
+            x: filtered.map(d => d.GDP_Per_Capita),
+            y: filtered.map(d => d.Gov_Tax),
+            text: filtered.map(d => d.Country),
+            mode: 'markers',
+            marker: {
+                size: filtered.map(d => (parseFloat(d.Obesity_Rate) || 1) * 2),
+                color: filtered.map(d => d.Obesity_Rate),
+                colorscale: 'YlGnBu',
+                showscale: true
+            },
+            type: 'scatter'
+        }], {margin: {t: 20, l: 40, r: 10, b: 40}, xaxis: {title: 'GDP per Capita'}, yaxis: {title: 'Gov. Sugar Tax per Capita'}, plot_bgcolor: '#f7faf9', paper_bgcolor: '#f7faf9'});
+        const regionGroups = {};
+        filtered.forEach(d => {
+            if (!regionGroups[d.Region]) regionGroups[d.Region] = {import: 0, export: 0};
+            regionGroups[d.Region].import += parseFloat(d.Sugar_Imports) || 0;
+            regionGroups[d.Region].export += parseFloat(d.Sugar_Exports) || 0;
+        });
+        const regions = Object.keys(regionGroups);
+        Plotly.newPlot('importExportBar', [
+            {
+                x: regions,
+                y: regions.map(r => regionGroups[r].import),
                 name: 'Imports',
-                type: 'bar'
-            }, {
-                x: importExportData.map(d => d.Country),
-                y: importExportData.map(d => d.Sugar_Exports),
+                type: 'bar',
+                marker: {color: '#40916c'}
+            },
+            {
+                x: regions,
+                y: regions.map(r => regionGroups[r].export),
                 name: 'Exports',
-                type: 'bar'
-            }];
-            Plotly.newPlot('importExportBar', barData);
-
-            // Update Top Producers Table
-            const sortedProducers = productionData
-                .sort((a, b) => b.Sugarcane_Production_Yield - a.Sugarcane_Production_Yield)
-                .slice(0, 10);
-            
-            const tableBody = document.querySelector('#topProducersTable tbody');
-            tableBody.innerHTML = sortedProducers
-                .map(d => `
-                    <tr>
-                        <td>${d.Country}</td>
-                        <td>${d.Sugarcane_Production_Yield.toFixed(2)}</td>
-                    </tr>
-                `)
-                .join('');
-
-            // Plot Policy Impact Analysis
-            const policyData = [{
-                x: taxGdpData.map(d => d.Country),
-                y: taxGdpData.map(d => d.Gov_Tax),
                 type: 'bar',
-                name: 'Sugar Tax'
-            }, {
-                x: taxGdpData.map(d => d.Country),
-                y: taxGdpData.map(d => d.Obesity_Rate),
-                type: 'bar',
-                name: 'Obesity Rate'
-            }];
-            Plotly.newPlot('policyImpact', policyData);
+                marker: {color: '#b7e4c7'}
+            }
+        ], {barmode: 'stack', margin: {t: 20, l: 40, r: 10, b: 40}, plot_bgcolor: '#f7faf9', paper_bgcolor: '#f7faf9'});
+        Plotly.newPlot('taxChoropleth', [{
+            x: filtered.map(d => d.Country),
+            y: filtered.map(d => d.Gov_Tax),
+            type: 'bar',
+            marker: {color: filtered.map(d => d.Gov_Tax), colorscale: 'Greens', showscale: true}
+        }], {margin: {t: 20, l: 40, r: 10, b: 40}, xaxis: {title: 'Country'}, yaxis: {title: 'Gov. Sugar Tax per Capita'}, plot_bgcolor: '#f7faf9', paper_bgcolor: '#f7faf9'});
+        const sortedProducers = [...filtered].sort((a, b) => (b.Sugarcane_Production_Yield || 0) - (a.Sugarcane_Production_Yield || 0)).slice(0, 10);
+        const tableBody = document.querySelector('#topProducersTable tbody');
+        tableBody.innerHTML = sortedProducers.map(d => `<tr><td>${d.Country}</td><td>${(d.Sugarcane_Production_Yield || 0).toFixed(2)}</td></tr>`).join('');
+    }
+    function exportTable() {
+        const rows = Array.from(document.querySelectorAll('#topProducersTable tr'));
+        const csv = rows.map(row => Array.from(row.children).map(cell => cell.textContent).join(",")).join("\n");
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'top_sugar_producers.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    function renderDeepDiveTable() {
+        const region = document.getElementById('deepDiveRegionFilter').value;
+        const gdpMax = document.getElementById('deepDiveGdpSlider').value;
+        const taxAboveAvg = document.getElementById('deepDiveTaxAboveAvg').checked;
+        const globalAvgTax = allData.length ? allData.reduce((sum, d) => sum + (parseFloat(d.Gov_Tax) || 0), 0) / allData.length : 0;
+        let filtered = allData.filter(d =>
+            (!region || d.Region === region) &&
+            (!gdpMax || (parseFloat(d.GDP_Per_Capita) || 0) <= gdpMax) &&
+            (!taxAboveAvg || (parseFloat(d.Gov_Tax) || 0) > globalAvgTax)
+        );
+        const tbody = document.querySelector('#deepDiveTable tbody');
+        const noDataDiv = document.getElementById('deepDiveNoData');
+        if (filtered.length === 0) {
+            tbody.innerHTML = '';
+            noDataDiv.style.display = 'block';
+        } else {
+            noDataDiv.style.display = 'none';
+            tbody.innerHTML = filtered.map(d => `
+                <tr>
+                    <td>${d.Country}</td>
+                    <td>${d.Continent || '--'}</td>
+                    <td>${d.Region || '--'}</td>
+                    <td>${Math.round(d.Sugar_Imports || 0)}</td>
+                    <td>${Math.round(d.Sugar_Exports || 0)}</td>
+                    <td>${d.Gov_Tax !== undefined ? d.Gov_Tax : '--'}</td>
+                    <td>${Math.round(d.GDP_Per_Capita || 0)}</td>
+                    <td>${Math.round(d.Obesity_Rate || 0)}</td>
+                    <td>${Math.round(d.Diabetes_Prevalence || 0)}</td>
+                </tr>
+            `).join('');
         }
-
-        // Initialize the dashboard
-        fetchAndPlotData();
-
-        // Add event listeners for filters
-        document.getElementById('countryFilter').addEventListener('change', fetchAndPlotData);
-        document.getElementById('regionFilter').addEventListener('change', fetchAndPlotData);
-        document.getElementById('sugarTypeFilter').addEventListener('change', fetchAndPlotData);
+    }
+    function populateDeepDiveFilters() {
+        const regions = [...new Set(allData.map(d => d.Region).filter(Boolean))];
+        const sel = document.getElementById('deepDiveRegionFilter');
+        sel.innerHTML = '<option value="">All</option>' + regions.map(r => `<option value="${r}">${r}</option>`).join('');
+    }
+    function updateDashboard() {
+        const filtered = getFilteredData();
+        updateContext(filtered);
+        renderCharts(filtered);
+        populateDeepDiveFilters();
+        renderDeepDiveTable();
+    }
+    function setupFilterListeners() {
+        ['sugarTypeFilter','countrySearch','deepDiveRegionFilter','deepDiveGdpSlider','deepDiveTaxAboveAvg'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', updateDashboard);
+            if (el) el.addEventListener('input', updateDashboard);
+        });
+    }
+    async function initDashboard() {
+        await fetchAllData();
+        populateFilters();
+        setupFilterListeners();
+        updateDashboard();
+    }
+    window.onload = initDashboard;
     </script>
 </body>
 </html> 

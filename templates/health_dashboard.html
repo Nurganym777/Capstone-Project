@@ -3,242 +3,384 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Health Dashboard - Sugar Consumption Analysis</title>
+    <title>Sugar & Health Risk Analytics</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7faf9; }
+        .dashboard-header { background: #fff; border-radius: 10px; padding: 2rem 2rem 1rem 2rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .dashboard-title { color: #1b4332; font-weight: 700; font-size: 2.2rem; }
+        .dashboard-subtitle { color: #495057; font-size: 1.1rem; }
+        .context-card { background: #e9f5ee; border: none; border-radius: 10px; color: #1b4332; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
+        .context-card .display-5 { color: #2d6a4f; font-weight: 700; }
+        .visual-panel-title { font-weight: 600; color: #1b4332; }
+        .visual-panel-desc { color: #495057; font-size: 0.98rem; margin-bottom: 0.5rem; }
+        .filter-panel { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.03); padding: 1.5rem; }
+        .footer { color: #6c757d; font-size: 0.95rem; text-align: right; margin-top: 2rem; }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/">Sugar Consumption Analysis</a>
-            <a href="/" class="btn btn-outline-light">Back to Home</a>
+    <div class="container-fluid p-4">
+        <!-- Logo and Header -->
+        <div class="d-flex align-items-center mb-2">
+            <div class="sdash-logo" style="color:#14532d;">
+                <span class="sdash-cube" style="border:2px solid #14532d;">
+                    <span class="sdash-heart" style="background:#14532d;">❤</span>
+                </span>
+                S.Dash
+            </div>
         </div>
-    </nav>
-
-    <div class="container mt-4">
-        <h2>Health Dashboard</h2>
-        
+        <div class="dashboard-header mb-4">
+            <div class="dashboard-title">Sugar & Health Risk Analytics</div>
+            <div class="dashboard-subtitle">Explore global disease patterns linked to sugar consumption</div>
+        </div>
         <!-- Context Section -->
-        <div class="section mb-5">
-            <h3 class="section-title">Context</h3>
-            <div class="row" id="context-metrics-row">
-                <div class="col-md-4 mb-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="card-title">Average Daily Sugar Intake</h6>
-                            <div class="display-5" id="avgSugarIntake">--</div>
-                            <div class="text-muted">grams per person</div>
-                        </div>
+        <div class="row mb-4 g-3">
+            <div class="col-md-3 col-6">
+                <div class="card context-card text-center" style="border: 2px solid #1b4332;">
+                    <div class="card-body">
+                        <div class="card-title small">Global Avg Daily Sugar Intake (g/day)</div>
+                        <div class="display-5" id="avgSugarIntake">--</div>
+                        <div class="text-muted">g/day</div>
                     </div>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="card-title">Average Diabetes Prevalence</h6>
-                            <div class="display-5" id="avgDiabetes">--</div>
-                            <div class="text-muted">%</div>
-                        </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card context-card text-center" style="border: 2px solid #1b4332;">
+                    <div class="card-body">
+                        <div class="card-title small">Global Obesity Rate (%)</div>
+                        <div class="display-5" id="avgObesity">--</div>
+                        <div class="text-muted">%</div>
                     </div>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card text-center">
-                        <div class="card-body">
-                            <h6 class="card-title">Average Obesity Rate</h6>
-                            <div class="display-5" id="avgObesity">--</div>
-                            <div class="text-muted">%</div>
-                        </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card context-card text-center" style="border: 2px solid #1b4332;">
+                    <div class="card-body">
+                        <div class="card-title small">Global Diabetes Prevalence (%)</div>
+                        <div class="display-5" id="avgDiabetes">--</div>
+                        <div class="text-muted">%</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="card context-card text-center" style="border: 2px solid #1b4332;">
+                    <div class="card-body">
+                        <div class="card-title small">Total Sugar Consumption (g)</div>
+                        <div class="display-5" id="avgProcessedFood">--</div>
+                        <div class="text-muted">g</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Main Points Section -->
-        <div class="section mb-5">
-            <h3 class="section-title">Main Points</h3>
-            <div class="row">
-                <!-- Quantitative Visualizations -->
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Sugar Intake vs Diabetes Prevalence</h5>
-                            <div id="sugarDiabetesScatter"></div>
-                        </div>
-                    </div>
+        <!-- Main Visual Section -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card p-3 mb-3">
+                    <div class="visual-panel-title">Sugar Intake vs Diabetes Prevalence</div>
+                    <div class="visual-panel-desc">Country-wise correlation between sugar intake and diabetes prevalence.</div>
+                    <div id="sugarDiabetesScatter" style="height:340px;"></div>
                 </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Average Daily Sugar Intake by Country</h5>
-                            <div id="sugarIntakeBar"></div>
-                        </div>
-                    </div>
+                <div class="card p-3 mb-3">
+                    <div class="visual-panel-title">Sugar Source Composition</div>
+                    <div class="visual-panel-desc">Share of sugarcane, beet, and HFCS in total sugar consumption (worldwide).</div>
+                    <div id="sugarSourcesPie" style="height:340px;"></div>
                 </div>
-                <!-- Qualitative Visualizations -->
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Sources of Sugar</h5>
-                            <div id="sugarSourcesPie"></div>
-                        </div>
-                    </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card p-3 mb-3">
+                    <div class="visual-panel-title">Top 10 Avg Daily Sugar Intake by Country</div>
+                    <div class="visual-panel-desc">Countries with the highest average daily sugar intake.</div>
+                    <div id="sugarIntakeBar" style="height:340px;"></div>
                 </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Diabetes vs Obesity Prevalence</h5>
-                            <div id="diabetesObesityHeatmap"></div>
-                        </div>
-                    </div>
+                <div class="card p-3 mb-3">
+                    <div class="visual-panel-title">Diabetes/Obesity by Region</div>
+                    <div class="visual-panel-desc">Color-coded heatmap by region (merged index).</div>
+                    <div id="regionHeatmap" style="height:340px;"></div>
                 </div>
             </div>
         </div>
-
         <!-- Deep Dive Section -->
-        <div class="section mb-5">
-            <h3 class="section-title">Deep Dive Analysis</h3>
-            <div class="row">
-                <div class="col-md-12 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Regional Analysis</h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div id="regionalAnalysis"></div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="analysis-text">
-                                        <h6>Key Insights:</h6>
-                                        <ul>
-                                            <li>Western countries show higher sugar consumption but better health outcomes due to better healthcare systems</li>
-                                            <li>Developing nations face increasing diabetes rates despite lower sugar consumption</li>
-                                            <li>Urban areas show higher sugar intake compared to rural regions</li>
-                                            <li>Economic development correlates with processed food consumption</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+        <div class="deep-dive-section">
+            <div class="deep-dive-title">Deep Dive: Country Health Table</div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label">Continent</label>
+                    <select class="form-select mb-2" id="deepDiveContinentFilter"></select>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="deepDiveHighObesity">
+                        <label class="form-check-label" for="deepDiveHighObesity">High Obesity (&gt; 25%)</label>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Filters -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <select class="form-select" id="regionFilter">
-                    <option value="">All Regions</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <select class="form-select" id="continentFilter">
-                    <option value="">All Continents</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <select class="form-select" id="diseaseFilter">
-                    <option value="both">Both Diabetes and Obesity</option>
-                    <option value="diabetes">Diabetes Only</option>
-                    <option value="obesity">Obesity Only</option>
-                </select>
+            <div class="table-responsive">
+                <table class="table table-bordered" id="deepDiveTable">
+                    <thead>
+                        <tr>
+                            <th>Country</th>
+                            <th>Obesity (%)</th>
+                            <th>Diabetes (%)</th>
+                            <th>Sugar Intake (g)</th>
+                            <th>Total Sugar Consumption (g)</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div id="deepDiveNoData" class="text-center text-muted" style="display:none;">No data available for the selected filters.</div>
             </div>
         </div>
     </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Fetch and plot data
-        async function fetchAndPlotData() {
-            // Diabetes and Obesity data
-            const diabetesObesityResponse = await fetch('/api/health/diabetes-obesity');
-            const diabetesObesityData = await diabetesObesityResponse.json();
+    // Utility: Format date for last updated
+    function formatDate(date) { return date.toLocaleString(); }
+    let allData = [], diabetesObesityData = [], sugarIntakeData = [], sugarSourcesData = [];
+    async function fetchAllData() {
+        const [diabetesObesityRes, sugarIntakeRes, sugarSourcesRes] = await Promise.all([
+            fetch('/api/health/diabetes-obesity'),
+            fetch('/api/health/sugar-intake'),
+            fetch('/api/health/sugar-sources')
+        ]);
+        diabetesObesityData = await diabetesObesityRes.json();
+        sugarIntakeData = await sugarIntakeRes.json();
+        sugarSourcesData = await sugarSourcesRes.json();
+        
+        // Merge data by matching on Country and calculate total sugar consumption
+        allData = diabetesObesityData.map(d => {
+            const sugarIntake = sugarIntakeData.find(s => s.Country === d.Country) || {};
+            const sugarSource = sugarSourcesData.find(s => s.Country === d.Country) || {};
             
-            // Sugar Intake data
-            const sugarIntakeResponse = await fetch('/api/health/sugar-intake');
-            const sugarIntakeData = await sugarIntakeResponse.json();
+            // Calculate total sugar consumption from all sources
+            const totalSugar = (
+                (parseFloat(sugarSource.Sugar_From_Sugarcane) || 0) +
+                (parseFloat(sugarSource.Sugar_From_Beet) || 0) +
+                (parseFloat(sugarSource.Sugar_From_HFCS) || 0)
+            );
             
-            // Sugar Sources data
-            const sugarSourcesResponse = await fetch('/api/health/sugar-sources');
-            const sugarSourcesData = await sugarSourcesResponse.json();
+            return { 
+                ...d, 
+                ...sugarIntake, 
+                ...sugarSource,
+                Total_Sugar_Consumption: totalSugar
+            };
+        });
+        console.log('DEBUG allData:', allData);
+    }
+    function updateContext(data) {
+        const avg = (arr, key) => {
+            if (!arr.length) return '--';
+            const sum = arr.reduce((acc, d) => acc + (parseFloat(d[key]) || 0), 0);
+            return Math.round(sum / arr.length);
+        };
+        
+        document.getElementById('avgSugarIntake').textContent = avg(data, 'Avg_Daily_Sugar_Intake');
+        document.getElementById('avgObesity').textContent = avg(data, 'Obesity_Rate');
+        document.getElementById('avgDiabetes').textContent = avg(data, 'Diabetes_Prevalence');
+        document.getElementById('avgProcessedFood').textContent = avg(data, 'Total_Sugar_Consumption');
+    }
+    function renderCharts(data) {
+        // Scatter plot
+        Plotly.newPlot('sugarDiabetesScatter', [{
+            x: data.map(d => d.Avg_Daily_Sugar_Intake),
+            y: data.map(d => d.Diabetes_Prevalence),
+            text: data.map(d => d.Country),
+            mode: 'markers',
+            marker: { size: 12, color: data.map(d => d.Diabetes_Prevalence), colorscale: 'RdYlGn', showscale: true },
+            type: 'scatter'
+        }], {margin: {t: 20, l: 40, r: 10, b: 40}, xaxis: {title: 'Avg. Daily Sugar Intake'}, yaxis: {title: 'Diabetes Prevalence (%)'}, plot_bgcolor: '#f7faf9', paper_bgcolor: '#f7faf9'});
 
-            // --- CONTEXT METRICS ---
-            // Calculate averages
-            const avgSugarIntake = (sugarIntakeData.reduce((sum, d) => sum + (parseFloat(d.Avg_Daily_Sugar_Intake) || 0), 0) / sugarIntakeData.length).toFixed(2);
-            const avgDiabetes = (diabetesObesityData.reduce((sum, d) => sum + (parseFloat(d.Diabetes_Prevalence) || 0), 0) / diabetesObesityData.length).toFixed(2);
-            const avgObesity = (diabetesObesityData.reduce((sum, d) => sum + (parseFloat(d.Obesity_Rate) || 0), 0) / diabetesObesityData.length).toFixed(2);
-            document.getElementById('avgSugarIntake').textContent = avgSugarIntake;
-            document.getElementById('avgDiabetes').textContent = avgDiabetes;
-            document.getElementById('avgObesity').textContent = avgObesity;
-
-            // --- MAIN VISUALIZATIONS ---
-            // Plot Diabetes vs Obesity Heatmap
-            const heatmapData = [{
-                z: diabetesObesityData.map(d => [d.Diabetes_Prevalence, d.Obesity_Rate]),
-                x: ['Diabetes', 'Obesity'],
-                y: diabetesObesityData.map(d => d.Country),
-                type: 'heatmap',
-                colorscale: 'Viridis'
-            }];
-            Plotly.newPlot('diabetesObesityHeatmap', heatmapData);
-
-            // Plot Sugar Intake vs Diabetes Scatter
-            const scatterData = [{
-                x: sugarIntakeData.map(d => d.Avg_Daily_Sugar_Intake),
-                y: sugarIntakeData.map(d => d.Diabetes_Prevalence),
-                mode: 'markers',
-                type: 'scatter',
-                text: sugarIntakeData.map(d => d.Country),
-                marker: {
-                    size: 10,
-                    color: sugarIntakeData.map(d => d.Diabetes_Prevalence),
-                    colorscale: 'Viridis'
+        // Lollipop Chart for Top 10 Sugar Intake
+        const validData = data.filter(d => d.Avg_Daily_Sugar_Intake && !isNaN(d.Avg_Daily_Sugar_Intake));
+        const topSugar = [...validData]
+            .sort((a, b) => (parseFloat(b.Avg_Daily_Sugar_Intake) || 0) - (parseFloat(a.Avg_Daily_Sugar_Intake) || 0))
+            .slice(0, 10);
+        
+        Plotly.newPlot('sugarIntakeBar', [{
+            x: topSugar.map(d => d.Country),
+            y: topSugar.map(d => parseFloat(d.Avg_Daily_Sugar_Intake)),
+            mode: 'lines+markers',
+            type: 'scatter',
+            line: {
+                color: '#14532d',
+                width: 2
+            },
+            marker: {
+                size: 12,
+                color: '#14532d',
+                line: {
+                    color: '#ffffff',
+                    width: 2
                 }
-            }];
-            Plotly.newPlot('sugarDiabetesScatter', scatterData);
+            },
+            text: topSugar.map(d => `${d.Country}<br>${Math.round(d.Avg_Daily_Sugar_Intake)}g/day`),
+            hoverinfo: 'text'
+        }], {
+            margin: {t: 20, l: 40, r: 10, b: 40},
+            xaxis: {
+                title: 'Country',
+                tickangle: -45
+            },
+            yaxis: {
+                title: 'Sugar Intake (g/day)',
+                zeroline: false
+            },
+            plot_bgcolor: '#f7faf9',
+            paper_bgcolor: '#f7faf9'
+        });
 
-            // Plot Sugar Intake Bar Chart
-            const barData = [{
-                x: sugarIntakeData.map(d => d.Country),
-                y: sugarIntakeData.map(d => d.Avg_Daily_Sugar_Intake),
-                type: 'bar'
-            }];
-            Plotly.newPlot('sugarIntakeBar', barData);
+        // Curved Area Chart for Sugar Sources
+        const totalCane = data.reduce((sum, d) => sum + (parseFloat(d.Sugar_From_Sugarcane) || 0), 0);
+        const totalBeet = data.reduce((sum, d) => sum + (parseFloat(d.Sugar_From_Beet) || 0), 0);
+        const totalHFCS = data.reduce((sum, d) => sum + (parseFloat(d.Sugar_From_HFCS) || 0), 0);
+        const totalOther = data.reduce((sum, d) => sum + (parseFloat(d.Sugar_From_Other) || 0), 0);
+        
+        Plotly.newPlot('sugarSourcesPie', [{
+            x: ['Sugarcane', 'Beet', 'HFCS', 'Other'],
+            y: [totalCane, totalBeet, totalHFCS, totalOther],
+            type: 'scatter',
+            mode: 'lines',
+            fill: 'tonexty',
+            line: {shape: 'spline', smoothing: 1.3},
+            fillcolor: 'rgba(116, 198, 157, 0.3)',
+            line: {color: '#74c69d', width: 2}
+        }], {
+            margin: {t: 20, l: 40, r: 10, b: 40},
+            xaxis: {title: 'Sugar Source'},
+            yaxis: {title: 'Total Amount (g)'},
+            plot_bgcolor: '#f7faf9',
+            paper_bgcolor: '#f7faf9'
+        });
 
-            // Plot Sugar Sources Pie Chart
-            const pieData = [{
-                values: [
-                    sugarSourcesData.reduce((sum, d) => sum + d.Sugar_From_Sugarcane, 0),
-                    sugarSourcesData.reduce((sum, d) => sum + d.Sugar_From_Beet, 0),
-                    sugarSourcesData.reduce((sum, d) => sum + d.Sugar_From_HFCS, 0)
-                ],
-                labels: ['Sugarcane', 'Beet', 'HFCS'],
-                type: 'pie'
-            }];
-            Plotly.newPlot('sugarSourcesPie', pieData);
+        // Radar Chart for Health Risk Index by Region
+        const regionGroups = {};
+        data.forEach(d => {
+            if (d.Region) {
+                if (!regionGroups[d.Region]) {
+                    regionGroups[d.Region] = {
+                        obesity: [],
+                        diabetes: []
+                    };
+                }
+                if (d.Obesity_Rate) regionGroups[d.Region].obesity.push(parseFloat(d.Obesity_Rate));
+                if (d.Diabetes_Prevalence) regionGroups[d.Region].diabetes.push(parseFloat(d.Diabetes_Prevalence));
+            }
+        });
 
-            // Plot Regional Analysis
-            const regionalData = [{
-                x: diabetesObesityData.map(d => d.Country),
-                y: diabetesObesityData.map(d => d.Diabetes_Prevalence),
-                type: 'bar',
-                name: 'Diabetes'
-            }, {
-                x: diabetesObesityData.map(d => d.Country),
-                y: diabetesObesityData.map(d => d.Obesity_Rate),
-                type: 'bar',
-                name: 'Obesity'
-            }];
-            Plotly.newPlot('regionalAnalysis', regionalData);
+        const regions = Object.keys(regionGroups).filter(r => 
+            regionGroups[r].obesity.length > 0 || regionGroups[r].diabetes.length > 0
+        );
+
+        const avgObesityByRegion = regions.map(r => {
+            const values = regionGroups[r].obesity;
+            return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        });
+
+        const avgDiabetesByRegion = regions.map(r => {
+            const values = regionGroups[r].diabetes;
+            return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        });
+
+        Plotly.newPlot('regionHeatmap', [{
+            type: 'scatterpolar',
+            r: avgObesityByRegion,
+            theta: regions,
+            fill: 'toself',
+            name: 'Obesity Rate',
+            line: {color: '#52b788', width: 2},
+            fillcolor: 'rgba(82, 183, 136, 0.3)'
+        }, {
+            type: 'scatterpolar',
+            r: avgDiabetesByRegion,
+            theta: regions,
+            fill: 'toself',
+            name: 'Diabetes Prevalence',
+            line: {color: '#1b4332', width: 2},
+            fillcolor: 'rgba(27, 67, 50, 0.3)'
+        }], {
+            polar: {
+                radialaxis: {
+                    visible: true,
+                    range: [0, Math.max(...avgObesityByRegion, ...avgDiabetesByRegion) * 1.1],
+                    tickformat: '.0%',
+                    ticksuffix: '%'
+                }
+            },
+            showlegend: true,
+            legend: {
+                orientation: 'h',
+                y: 1.1
+            },
+            plot_bgcolor: '#f7faf9',
+            paper_bgcolor: '#f7faf9'
+        });
+    }
+    function populateDeepDiveFilters() {
+        const continents = [...new Set(allData
+            .map(d => d.Continent)
+            .filter(Boolean)
+            .sort()
+        )];
+        
+        const sel = document.getElementById('deepDiveContinentFilter');
+        sel.innerHTML = '<option value="">All</option>' + 
+            continents.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+    function renderDeepDiveTable() {
+        const continent = document.getElementById('deepDiveContinentFilter').value;
+        const highObesity = document.getElementById('deepDiveHighObesity').checked;
+        let filtered = allData.filter(d =>
+            (!continent || d.Continent === continent) &&
+            (!highObesity || (parseFloat(d.Obesity_Rate) || 0) > 25)
+        );
+        const countryData = {};
+        filtered.forEach(d => {
+            if (!countryData[d.Country]) {
+                countryData[d.Country] = { obesity: [], diabetes: [], sugarIntake: [], totalSugar: [] };
+            }
+            countryData[d.Country].obesity.push(parseFloat(d.Obesity_Rate) || 0);
+            countryData[d.Country].diabetes.push(parseFloat(d.Diabetes_Prevalence) || 0);
+            countryData[d.Country].sugarIntake.push(parseFloat(d.Avg_Daily_Sugar_Intake) || 0);
+            countryData[d.Country].totalSugar.push(parseFloat(d.Total_Sugar_Consumption) || 0);
+        });
+        const tbody = document.querySelector('#deepDiveTable tbody');
+        const noDataDiv = document.getElementById('deepDiveNoData');
+        if (Object.keys(countryData).length === 0) {
+            tbody.innerHTML = '';
+            noDataDiv.style.display = 'block';
+        } else {
+            noDataDiv.style.display = 'none';
+            tbody.innerHTML = Object.entries(countryData).map(([country, data]) => `
+                <tr>
+                    <td>${country}</td>
+                    <td>${Math.round(data.obesity.reduce((a, b) => a + b, 0) / data.obesity.length)}</td>
+                    <td>${Math.round(data.diabetes.reduce((a, b) => a + b, 0) / data.diabetes.length)}</td>
+                    <td>${Math.round(data.sugarIntake.reduce((a, b) => a + b, 0) / data.sugarIntake.length)}</td>
+                    <td>${Math.round(data.totalSugar.reduce((a, b) => a + b, 0) / data.totalSugar.length)}</td>
+                </tr>
+            `).join('');
         }
-
-        // Initialize the dashboard
-        fetchAndPlotData();
-
-        // Add event listeners for filters
-        document.getElementById('regionFilter').addEventListener('change', fetchAndPlotData);
-        document.getElementById('continentFilter').addEventListener('change', fetchAndPlotData);
-        document.getElementById('diseaseFilter').addEventListener('change', fetchAndPlotData);
+    }
+    function updateDashboard() {
+        updateContext(allData);
+        renderCharts(allData);
+        populateDeepDiveFilters();
+        renderDeepDiveTable();
+    }
+    function setupFilterListeners() {
+        ['deepDiveContinentFilter','deepDiveHighObesity'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', updateDashboard);
+        });
+    }
+    async function initDashboard() {
+        await fetchAllData();
+        setupFilterListeners();
+        updateDashboard();
+    }
+    window.onload = initDashboard;
     </script>
 </body>
 </html> 
