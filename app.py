@@ -24,17 +24,35 @@ def policy_dashboard():
 # API endpoints for health dashboard
 @app.route('/api/health/diabetes-obesity')
 def diabetes_obesity_data():
-    data = df[['Country', 'Diabetes_Prevalence', 'Obesity_Rate']].dropna()
+    data = df[['Country', 'Region', 'Diabetes_Prevalence', 'Obesity_Rate']].dropna(subset=['Country', 'Region', 'Diabetes_Prevalence', 'Obesity_Rate'])
     return jsonify(data.to_dict(orient='records'))
 
 @app.route('/api/health/sugar-intake')
 def sugar_intake_data():
-    data = df[['Country', 'Avg_Daily_Sugar_Intake', 'Diabetes_Prevalence']].dropna()
+    # Ensure Country and Avg_Daily_Sugar_Intake are included for Top 10 chart
+    data = df[['Country', 'Avg_Daily_Sugar_Intake']].dropna(subset=['Country', 'Avg_Daily_Sugar_Intake'])
     return jsonify(data.to_dict(orient='records'))
 
 @app.route('/api/health/sugar-sources')
 def sugar_sources_data():
-    data = df[['Country', 'Sugar_From_Sugarcane', 'Sugar_From_Beet', 'Sugar_From_HFCS']].dropna()
+    # Calculate total sum for each sugar source across the dataset
+    total_sugarcane = df['Sugar_From_Sugarcane'].sum() or 0
+    total_beet = df['Sugar_From_Beet'].sum() or 0
+    total_hfcs = df['Sugar_From_HFCS'].sum() or 0
+    total_other = df['Sugar_From_Other'].sum() or 0
+    
+    # Return these totals
+    return jsonify({
+        'Sugar_From_Sugarcane': total_sugarcane,
+        'Sugar_From_Beet': total_beet,
+        'Sugar_From_HFCS': total_hfcs,
+        'Sugar_From_Other': total_other
+    })
+
+@app.route('/api/health/sugar-sources-per-country')
+def sugar_sources_per_country_data():
+    # Return per-country sugar source data
+    data = df[['Country', 'Sugar_From_Sugarcane', 'Sugar_From_Beet', 'Sugar_From_HFCS', 'Sugar_From_Other']].dropna(subset=['Country'])
     return jsonify(data.to_dict(orient='records'))
 
 # API endpoints for policy dashboard

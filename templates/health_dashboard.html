@@ -96,7 +96,7 @@
                 </div>
                 <div class="card p-3 mb-3">
                     <div class="visual-panel-title">Diabetes/Obesity by Region</div>
-                    <div class="visual-panel-desc">Color-coded heatmap by region (merged index).</div>
+                    <div class="visual-panel-desc">Relationship between average obesity rate and diabetes prevalence by region.</div>
                     <div id="regionHeatmap" style="height:340px;"></div>
                 </div>
             </div>
@@ -137,91 +137,156 @@
     <script>
     // Utility: Format date for last updated
     function formatDate(date) { return date.toLocaleString(); }
-    let allData = [], diabetesObesityData = [], sugarIntakeData = [], sugarSourcesData = [];
+    let allData = [];
+    let sugarSourcesTotals = {}; // Variable to store global sugar source totals
+
     async function fetchAllData() {
-        const [diabetesObesityRes, sugarIntakeRes, sugarSourcesRes] = await Promise.all([
+        const [diabetesObesityRes, sugarIntakeRes, sugarSourcesRes, sugarSourcesPerCountryRes] = await Promise.all([
             fetch('/api/health/diabetes-obesity'),
             fetch('/api/health/sugar-intake'),
-            fetch('/api/health/sugar-sources')
+            fetch('/api/health/sugar-sources'), // This now returns global totals
+            fetch('/api/health/sugar-sources-per-country') // This returns per-country data
         ]);
-        diabetesObesityData = await diabetesObesityRes.json();
-        sugarIntakeData = await sugarIntakeRes.json();
-        sugarSourcesData = await sugarSourcesRes.json();
-        
-        // Merge data by matching on Country and calculate total sugar consumption
-        allData = diabetesObesityData.map(d => {
-            const sugarIntake = sugarIntakeData.find(s => s.Country === d.Country) || {};
-            const sugarSource = sugarSourcesData.find(s => s.Country === d.Country) || {};
-            
-            // Calculate total sugar consumption from all sources
-            const totalSugar = (
-                (parseFloat(sugarSource.Sugar_From_Sugarcane) || 0) +
-                (parseFloat(sugarSource.Sugar_From_Beet) || 0) +
-                (parseFloat(sugarSource.Sugar_From_HFCS) || 0)
-            );
-            
-            return { 
-                ...d, 
-                ...sugarIntake, 
-                ...sugarSource,
-                Total_Sugar_Consumption: totalSugar
-            };
+        const diabetesObesityData = await diabetesObesityRes.json();
+        const sugarIntakeData = await sugarIntakeRes.json();
+        // Fetch global sugar source totals directly from the dedicated endpoint
+        sugarSourcesTotals = await sugarSourcesRes.json();
+
+         // Fetch per-country sugar source data for Total Sugar Consumption calculation
+        const sugarSourcesPerCountryData = await sugarSourcesPerCountryRes.json();
+
+        // Group data by Country and aggregate metrics
+        const countryDataMap = new Map();
+
+        // Process diabetes and obesity data
+        diabetesObesityData.forEach(d => {
+            if (d.Country) {
+                if (!countryDataMap.has(d.Country)) {
+                    countryDataMap.set(d.Country, { Country: d.Country, Region: d.Region, Obesity_Rate_Values: [], Diabetes_Prevalence_Values: [], Avg_Daily_Sugar_Intake_Values: [], Total_Sugar_Consumption_Values: [] });
+                }
+                const countryEntry = countryDataMap.get(d.Country);
+                if (d.Obesity_Rate) countryEntry.Obesity_Rate_Values.push(parseFloat(d.Obesity_Rate));
+                if (d.Diabetes_Prevalence) countryEntry.Diabetes_Prevalence_Values.push(parseFloat(d.Diabetes_Prevalence));
+                // Capture Region here as it's in this dataset
+                if (d.Region && !countryEntry.Region) countryEntry.Region = d.Region; // Only set region if not already set
+            }
         });
-        console.log('DEBUG allData:', allData);
+
+        // Process sugar intake data
+        sugarIntakeData.forEach(d => {
+             if (d.Country) {
+                if (!countryDataMap.has(d.Country)) {
+                    countryDataMap.set(d.Country, { Country: d.Country, Region: null, Obesity_Rate_Values: [], Diabetes_Prevalence_Values: [], Avg_Daily_Sugar_Intake_Values: [], Total_Sugar_Consumption_Values: [] });
+                }
+                const countryEntry = countryDataMap.get(d.Country);
+                 if (d.Avg_Daily_Sugar_Intake) countryEntry.Avg_Daily_Sugar_Intake_Values.push(parseFloat(d.Avg_Daily_Sugar_Intake));
+            }
+        });
+
+        // Process sugar sources data and calculate total sugar consumption per country
+        sugarSourcesPerCountryData.forEach(d => {
+             if (d.Country) {
+                 if (!countryDataMap.has(d.Country)) {
+                    countryDataMap.set(d.Country, { Country: d.Country, Region: null, Obesity_Rate_Values: [], Diabetes_Prevalence_Values: [], Avg_Daily_Sugar_Intake_Values: [], Total_Sugar_Consumption_Values: [] });
+                }
+                const countryEntry = countryDataMap.get(d.Country);
+                const totalSugar = (
+                    (parseFloat(d.Sugar_From_Sugarcane) || 0) +
+                    (parseFloat(d.Sugar_From_Beet) || 0) +
+                    (parseFloat(d.Sugar_From_HFCS) || 0) +
+                    (parseFloat(d.Sugar_From_Other) || 0)
+                );
+                // Only push if totalSugar is a valid non-negative number
+                if (!isNaN(totalSugar) && totalSugar >= 0) {
+                     countryEntry.Total_Sugar_Consumption_Values.push(totalSugar);
+                } else {
+                    console.log('DEBUG: Skipping Total_Sugar_Consumption for country due to invalid/negative sum:', d.Country, totalSugar);
+                }
+             }
+        });
+
+        // Convert map to array and calculate averages/sums
+        allData = Array.from(countryDataMap.values()).map(countryEntry => {
+            const avg = (values) => values.length ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
+            const sum = (values) => values.length ? values.reduce((sum, val) => sum + val, 0) : 0;
+
+            return {
+                Country: countryEntry.Country,
+                Region: countryEntry.Region,
+                Obesity_Rate: avg(countryEntry.Obesity_Rate_Values),
+                Diabetes_Prevalence: avg(countryEntry.Diabetes_Prevalence_Values),
+                Avg_Daily_Sugar_Intake: avg(countryEntry.Avg_Daily_Sugar_Intake_Values),
+                Total_Sugar_Consumption: sum(countryEntry.Total_Sugar_Consumption_Values) // This should now sum up per-country totals from the new endpoint
+            };
+        }).filter(d =>
+             d.Country &&
+            (d.Obesity_Rate > 0 || d.Diabetes_Prevalence > 0 || d.Avg_Daily_Sugar_Intake > 0 || d.Total_Sugar_Consumption > 0)
+             // Keep filter for countries with at least one positive health/sugar value
+        );
+
+        console.log('DEBUG allData (aggregated):', allData); // Debug log
     }
     function updateContext(data) {
         const avg = (arr, key) => {
-            if (!arr.length) return '--';
-            const sum = arr.reduce((acc, d) => acc + (parseFloat(d[key]) || 0), 0);
-            return Math.round(sum / arr.length);
+            // Calculate global average from the aggregated country data
+            const validData = arr.filter(d => d[key] > 0);
+            if (!validData.length) return '--';
+            const sum = validData.reduce((acc, d) => acc + (parseFloat(d[key]) || 0), 0);
+            return Math.round(sum / validData.length);
         };
-        
+
         document.getElementById('avgSugarIntake').textContent = avg(data, 'Avg_Daily_Sugar_Intake');
         document.getElementById('avgObesity').textContent = avg(data, 'Obesity_Rate');
         document.getElementById('avgDiabetes').textContent = avg(data, 'Diabetes_Prevalence');
-        document.getElementById('avgProcessedFood').textContent = avg(data, 'Total_Sugar_Consumption');
+         // For Total Sugar Consumption, sum up the Total_Sugar_Consumption from all countries (which are now sums of per-country sources)
+        const totalGlobalSugarConsumption = data.reduce((sum, d) => sum + (parseFloat(d.Total_Sugar_Consumption) || 0), 0);
+        document.getElementById('avgProcessedFood').textContent = Math.round(totalGlobalSugarConsumption);
+
+        console.log('DEBUG totalGlobalSugarConsumption (Context Card):', totalGlobalSugarConsumption); // Debug log for context card
     }
     function renderCharts(data) {
         // Scatter plot
+        // Filter for scatter plot data - requires Country, Region, and valid Obesity/Diabetes
+        const scatterData = data.filter(d => d.Country && d.Region && d.Obesity_Rate > 0 && d.Diabetes_Prevalence > 0);
         Plotly.newPlot('sugarDiabetesScatter', [{
-            x: data.map(d => d.Avg_Daily_Sugar_Intake),
-            y: data.map(d => d.Diabetes_Prevalence),
-            text: data.map(d => d.Country),
+            x: scatterData.map(d => d.Avg_Daily_Sugar_Intake),
+            y: scatterData.map(d => d.Diabetes_Prevalence),
+            text: scatterData.map(d => d.Country),
             mode: 'markers',
-            marker: { size: 12, color: data.map(d => d.Diabetes_Prevalence), colorscale: 'RdYlGn', showscale: true },
+            marker: { size: 12, color: scatterData.map(d => d.Diabetes_Prevalence), colorscale: 'RdYlGn', showscale: true },
             type: 'scatter'
         }], {margin: {t: 20, l: 40, r: 10, b: 40}, xaxis: {title: 'Avg. Daily Sugar Intake'}, yaxis: {title: 'Diabetes Prevalence (%)'}, plot_bgcolor: '#f7faf9', paper_bgcolor: '#f7faf9'});
 
-        // Lollipop Chart for Top 10 Sugar Intake
-        const validData = data.filter(d => d.Avg_Daily_Sugar_Intake && !isNaN(d.Avg_Daily_Sugar_Intake));
-        const topSugar = [...validData]
+        // Vertical Bar Chart for Top 10 Sugar Intake
+        const validBarData = data.filter(d => d.Avg_Daily_Sugar_Intake > 0);
+        const topSugar = [...validBarData]
             .sort((a, b) => (parseFloat(b.Avg_Daily_Sugar_Intake) || 0) - (parseFloat(a.Avg_Daily_Sugar_Intake) || 0))
             .slice(0, 10);
-        
+
+        console.log('DEBUG Plotting topSugar:', topSugar); // Debug log before plotting
+        console.log('DEBUG Top 10 X values:', topSugar.map(d => d.Country));
+        console.log('DEBUG Top 10 Y values:', topSugar.map(d => parseFloat(d.Avg_Daily_Sugar_Intake)));
+
         Plotly.newPlot('sugarIntakeBar', [{
             x: topSugar.map(d => d.Country),
             y: topSugar.map(d => parseFloat(d.Avg_Daily_Sugar_Intake)),
-            mode: 'lines+markers',
-            type: 'scatter',
-            line: {
-                color: '#14532d',
-                width: 2
-            },
+            type: 'bar',
             marker: {
-                size: 12,
                 color: '#14532d',
                 line: {
                     color: '#ffffff',
-                    width: 2
+                    width: 1
                 }
             },
-            text: topSugar.map(d => `${d.Country}<br>${Math.round(d.Avg_Daily_Sugar_Intake)}g/day`),
+            text: topSugar.map(d => `${Math.round(parseFloat(d.Avg_Daily_Sugar_Intake) || 0)}g/day`),
+            textposition: 'auto',
             hoverinfo: 'text'
         }], {
-            margin: {t: 20, l: 40, r: 10, b: 40},
+            margin: {t: 20, l: 40, r: 10, b: 120},
             xaxis: {
                 title: 'Country',
-                tickangle: -45
+                tickangle: -45,
+                automargin: true
             },
             yaxis: {
                 title: 'Sugar Intake (g/day)',
@@ -232,46 +297,50 @@
         });
 
         // Curved Area Chart for Sugar Sources
-        const totalCane = data.reduce((sum, d) => sum + (parseFloat(d.Sugar_From_Sugarcane) || 0), 0);
-        const totalBeet = data.reduce((sum, d) => sum + (parseFloat(d.Sugar_From_Beet) || 0), 0);
-        const totalHFCS = data.reduce((sum, d) => sum + (parseFloat(d.Sugar_From_HFCS) || 0), 0);
-        const totalOther = data.reduce((sum, d) => sum + (parseFloat(d.Sugar_From_Other) || 0), 0);
-        
+        // Use global sugar source totals fetched from backend
+        const totalCane = sugarSourcesTotals.Sugar_From_Sugarcane || 0;
+        const totalBeet = sugarSourcesTotals.Sugar_From_Beet || 0;
+        const totalHFCS = sugarSourcesTotals.Sugar_From_HFCS || 0;
+        const totalOther = sugarSourcesTotals.Sugar_From_Other || 0;
+
+        console.log('DEBUG Sugar Sources Totals (from fetched):', {Sugarcane: totalCane, Beet: totalBeet, HFCS: totalHFCS, Other: totalOther}); // Debug log
+
+        // REMOVE: Plotly.newPlot('sugarSourcesPie', [... curved area chart config ...]);
+        // REPLACE with Pie Chart
         Plotly.newPlot('sugarSourcesPie', [{
-            x: ['Sugarcane', 'Beet', 'HFCS', 'Other'],
-            y: [totalCane, totalBeet, totalHFCS, totalOther],
-            type: 'scatter',
-            mode: 'lines',
-            fill: 'tonexty',
-            line: {shape: 'spline', smoothing: 1.3},
-            fillcolor: 'rgba(116, 198, 157, 0.3)',
-            line: {color: '#74c69d', width: 2}
+            values: [totalCane, totalBeet, totalHFCS, totalOther],
+            labels: ['Sugarcane', 'Beet', 'HFCS', 'Other'],
+            type: 'pie',
+            hoverinfo: 'label+percent+value',
+            textinfo: 'percent',
+            insidetextorientation: 'radial',
+            automargin: true,
+            marker: {
+                colors: ['#40916c', '#80b99a', '#b7e4c7', '#d8f3dc'] // Green color palette
+            }
         }], {
-            margin: {t: 20, l: 40, r: 10, b: 40},
-            xaxis: {title: 'Sugar Source'},
-            yaxis: {title: 'Total Amount (g)'},
+            margin: {t: 20, b: 20, l: 20, r: 20},
+            showlegend: true,
             plot_bgcolor: '#f7faf9',
             paper_bgcolor: '#f7faf9'
         });
 
-        // Radar Chart for Health Risk Index by Region
+        // Scatter Plot for Diabetes/Obesity by Region
+        // REMOVE: Plotly.newPlot('regionHeatmap', [... Radar chart config ...]);
+        // REPLACE with Segmented Horizontal Bar Chart
+
+        const regionAggData = data.filter(d => d.Region && d.Obesity_Rate > 0 && d.Diabetes_Prevalence > 0);
+
         const regionGroups = {};
-        data.forEach(d => {
-            if (d.Region) {
-                if (!regionGroups[d.Region]) {
-                    regionGroups[d.Region] = {
-                        obesity: [],
-                        diabetes: []
-                    };
-                }
-                if (d.Obesity_Rate) regionGroups[d.Region].obesity.push(parseFloat(d.Obesity_Rate));
-                if (d.Diabetes_Prevalence) regionGroups[d.Region].diabetes.push(parseFloat(d.Diabetes_Prevalence));
+        regionAggData.forEach(d => {
+            if (!regionGroups[d.Region]) {
+                regionGroups[d.Region] = { obesity: [], diabetes: [] };
             }
+            regionGroups[d.Region].obesity.push(parseFloat(d.Obesity_Rate));
+            regionGroups[d.Region].diabetes.push(parseFloat(d.Diabetes_Prevalence));
         });
 
-        const regions = Object.keys(regionGroups).filter(r => 
-            regionGroups[r].obesity.length > 0 || regionGroups[r].diabetes.length > 0
-        );
+        const regions = Object.keys(regionGroups);
 
         const avgObesityByRegion = regions.map(r => {
             const values = regionGroups[r].obesity;
@@ -283,47 +352,58 @@
             return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
         });
 
-        Plotly.newPlot('regionHeatmap', [{
-            type: 'scatterpolar',
-            r: avgObesityByRegion,
-            theta: regions,
-            fill: 'toself',
-            name: 'Obesity Rate',
-            line: {color: '#52b788', width: 2},
-            fillcolor: 'rgba(82, 183, 136, 0.3)'
-        }, {
-            type: 'scatterpolar',
-            r: avgDiabetesByRegion,
-            theta: regions,
-            fill: 'toself',
-            name: 'Diabetes Prevalence',
-            line: {color: '#1b4332', width: 2},
-            fillcolor: 'rgba(27, 67, 50, 0.3)'
-        }], {
-            polar: {
-                radialaxis: {
-                    visible: true,
-                    range: [0, Math.max(...avgObesityByRegion, ...avgDiabetesByRegion) * 1.1],
-                    tickformat: '.0%',
-                    ticksuffix: '%'
-                }
-            },
-            showlegend: true,
-            legend: {
+        console.log('DEBUG regions (aggregated for Bar Chart):', regions);
+        console.log('DEBUG avgObesityByRegion (for Bar Chart):', avgObesityByRegion);
+        console.log('DEBUG avgDiabetesByRegion (for Bar Chart):', avgDiabetesByRegion);
+
+        // Prepare data for Segmented Horizontal Bar Chart
+        const barData = [
+            {
+                y: regions, // Regions on y-axis
+                x: avgObesityByRegion, // Obesity on x-axis
+                name: 'Average Obesity Rate',
+                type: 'bar',
                 orientation: 'h',
-                y: 1.1
+                marker: { color: '#14532d' }, // Dark green
+                hoverinfo: 'x+name+text',
+                text: avgObesityByRegion.map(val => val.toFixed(1) + '% '), // Add percentage and space for clarity
+                textposition: 'inside',
+                insidetextanchor: 'middle'
             },
+            {
+                y: regions, // Regions on y-axis
+                x: avgDiabetesByRegion, // Diabetes on x-axis
+                name: 'Average Diabetes Prevalence',
+                type: 'bar',
+                orientation: 'h',
+                marker: { color: '#80b99a' }, // Light green
+                 hoverinfo: 'x+name+text',
+                 text: avgDiabetesByRegion.map(val => val.toFixed(1) + '% '), // Add percentage and space for clarity
+                 textposition: 'inside',
+                 insidetextanchor: 'middle'
+            }
+        ];
+
+        const barLayout = {
+            barmode: 'stack', // Stack bars horizontally
+            xaxis: { title: 'Percentage (%)', zeroline: false, gridcolor: '#e9ecef' },
+            yaxis: { title: 'Region', automargin: true }, // Auto-adjust margin for region labels
+            showlegend: true,
+            legend: { orientation: 'h', yanchor: 'bottom', y: 1.02 }, // Legend above plot
+            margin: {t: 80, b: 40, l: 40, r: 40}, // Adjust top margin for legend
             plot_bgcolor: '#f7faf9',
             paper_bgcolor: '#f7faf9'
-        });
+        };
+
+        Plotly.newPlot('regionHeatmap', barData, barLayout);
     }
     function populateDeepDiveFilters() {
         const continents = [...new Set(allData
-            .map(d => d.Continent)
+            .map(d => d.Region) // Use Region from aggregated data
             .filter(Boolean)
             .sort()
         )];
-        
+
         const sel = document.getElementById('deepDiveContinentFilter');
         sel.innerHTML = '<option value="">All</option>' + 
             continents.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -331,34 +411,26 @@
     function renderDeepDiveTable() {
         const continent = document.getElementById('deepDiveContinentFilter').value;
         const highObesity = document.getElementById('deepDiveHighObesity').checked;
+        // Filter based on the aggregated data
         let filtered = allData.filter(d =>
-            (!continent || d.Continent === continent) &&
-            (!highObesity || (parseFloat(d.Obesity_Rate) || 0) > 25)
+            (!continent || d.Region === continent) && // Filter by Region
+            (!highObesity || (parseFloat(d.Obesity_Rate) || 0) > 25) // Use aggregated Obesity_Rate
         );
-        const countryData = {};
-        filtered.forEach(d => {
-            if (!countryData[d.Country]) {
-                countryData[d.Country] = { obesity: [], diabetes: [], sugarIntake: [], totalSugar: [] };
-            }
-            countryData[d.Country].obesity.push(parseFloat(d.Obesity_Rate) || 0);
-            countryData[d.Country].diabetes.push(parseFloat(d.Diabetes_Prevalence) || 0);
-            countryData[d.Country].sugarIntake.push(parseFloat(d.Avg_Daily_Sugar_Intake) || 0);
-            countryData[d.Country].totalSugar.push(parseFloat(d.Total_Sugar_Consumption) || 0);
-        });
         const tbody = document.querySelector('#deepDiveTable tbody');
         const noDataDiv = document.getElementById('deepDiveNoData');
-        if (Object.keys(countryData).length === 0) {
+        if (filtered.length === 0) {
             tbody.innerHTML = '';
             noDataDiv.style.display = 'block';
         } else {
             noDataDiv.style.display = 'none';
-            tbody.innerHTML = Object.entries(countryData).map(([country, data]) => `
+            console.log('DEBUG Deep Dive Filtered Data:', filtered); // Debug log for deep dive data
+            tbody.innerHTML = filtered.map(d => `
                 <tr>
-                    <td>${country}</td>
-                    <td>${Math.round(data.obesity.reduce((a, b) => a + b, 0) / data.obesity.length)}</td>
-                    <td>${Math.round(data.diabetes.reduce((a, b) => a + b, 0) / data.diabetes.length)}</td>
-                    <td>${Math.round(data.sugarIntake.reduce((a, b) => a + b, 0) / data.sugarIntake.length)}</td>
-                    <td>${Math.round(data.totalSugar.reduce((a, b) => a + b, 0) / data.totalSugar.length)}</td>
+                    <td>${d.Country}</td>
+                    <td>${d.Obesity_Rate.toFixed(1)}</td>
+                    <td>${d.Diabetes_Prevalence.toFixed(1)}</td>
+                    <td>${Math.round(d.Avg_Daily_Sugar_Intake)}</td>
+                    <td>${Math.round(d.Total_Sugar_Consumption)}</td>
                 </tr>
             `).join('');
         }
